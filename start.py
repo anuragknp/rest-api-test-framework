@@ -46,14 +46,27 @@ def complete_task(test):
             if '://' not in request['url']:
                 request['url'] = domain + request['url']
 
+            if request.get('headers') is None:
+                request['headers'] = {}
+            request['headers'].update(test_suite.TEST_ENV['global_headers'])
+
+            if request.get('params') is None:
+                request['params'] = {}
+            request['params'].update(test_suite.TEST_ENV['global_query_param'])
+
+            if request.get('data') is None:
+                request['data'] = {}
+            request['data'].update(test_suite.TEST_ENV['global_post_param'])
+
             print request
+
             r = requests.Session().request(request['method'], request['url'],
-                                                  request.get('params'), request.get('data'),
-                                                  request.get('headers'), request.get('cookies'),
-                                                  request.get('files'), request.get('auth'),
-                                                  request.get('timeout'), request.get('allow_redirects', True),
-                                                  request.get('proxies'), request.get('hooks'),
-                                                  request.get('stream'), request.get('verify'), request.get('cert'))
+                                           request.get('params'), request.get('data'),
+                                           request.get('headers'), request.get('cookies'),
+                                           request.get('files'), request.get('auth'),
+                                           request.get('timeout'), request.get('allow_redirects', True),
+                                           request.get('proxies'), request.get('hooks'),
+                                           request.get('stream'), request.get('verify'), request.get('cert'))
             response = test.TEST['response'][i]
             if 'hooks' in response:
                 if not response['hooks'](r):
@@ -93,14 +106,15 @@ if __name__ == '__main__':
 
     test_suite = importlib.import_module(input_file[:input_file.find('.py')])
     print '========================================================================'
-    print 'Test Suite Project Name:', test_suite.TEST['project_name']
+    print 'Test Suite Project Name:', test_suite.TEST_ENV['project_name']
 
-    if 'init_hooks' in test_suite.TEST:
-        test_suite.TEST['init_hooks'](global_headers, global_post_param, global_query_param)
-    domain = '%s://%s' % (test_suite.TEST['protocol'], test_suite.TEST['domain'])
+    if 'init_hooks' in test_suite.TEST_ENV:
+        if not test_suite.TEST_ENV['init_hooks'](global_headers, global_post_param, global_query_param):
+            print 'Init Failed'
+    domain = '%s://%s' % (test_suite.TEST_ENV['protocol'], test_suite.TEST_ENV['domain'])
 
-    for i in range(0, len(test_suite.TEST['testcases'])):
-        tasks.put_nowait(test_suite.TEST['testcases'][i])
+    for i in range(0, len(test_suite.TEST_ENV['testcases'])):
+        tasks.put_nowait(test_suite.TEST_ENV['testcases'][i])
 
     pool = ThreadPool(threads_count)
     for _ in range(threads_count):
